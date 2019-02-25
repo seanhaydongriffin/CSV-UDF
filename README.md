@@ -26,4 +26,4 @@ Because SQLite is used the performance of the UDF is fast and the functions are 
 
 ## Example
 
-Example.au3 is an example script that you can run.  You must make sure sqlite3.exe, sqlite3.dll and Item.csv are present in the same folder as the example. 
+**Example.au3** is an example script that you can run.  You must make sure **sqlite3.exe**, **sqlite3.dll** and **Item.csv** are present in the same folder as the example. 
