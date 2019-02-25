@@ -9,7 +9,7 @@
 	Author:   		seangriffin
 	Version:  		V0.1
 	Last Update: 	24/02/19
-	Requirements: 	AutoIt3 3.2 or higher,
+	Requirements: 	AutoIt3 3.3 or higher,
 					sqlite.exe.
 	Changelog:		---------24/02/19---------- v0.1
 					Initial release.
@@ -21,14 +21,14 @@
 #Region Core functions
 ; #FUNCTION# ;===============================================================================
 ;
-; Name...........:	cURL_initialise()
-; Description ...:	Initialises cURL.
-; Syntax.........:	cURL_initialise()
+; Name...........:	_CSV_Initialise()
+; Description ...:	Initialises CSV.
+; Syntax.........:	_CSV_Initialise()
 ; Parameters ....:
 ; Return values .:
 ; Author ........:	seangriffin
 ; Modified.......:
-; Remarks .......:	Must be executed prior to any other cURL functions.
+; Remarks .......:	Must be executed prior to any other CSV functions.
 ; Related .......:
 ; Link ..........:
 ; Example .......:	Yes
@@ -59,7 +59,7 @@ EndFunc
 Func _CSV_Open($csv_file)
 
 	Local $sOut
-	Local $csv_handle = StringReplace($csv_file, ".csv", ".db")
+	Local $csv_handle = @TempDir & "\" & StringReplace($csv_file, ".csv", ".db")
 	FileDelete($csv_handle)
 	_SQLite_SQLiteExe($csv_handle, ".mode csv" & @CRLF & ".import '" & $csv_file & "' csv", $sOut, -1, True)
 	Return $csv_handle
@@ -68,11 +68,11 @@ EndFunc
 
 ; #FUNCTION# ;===============================================================================
 ;
-; Name...........:	_CSV_GetTable2d()
-; Description ...:	Passes out a 2Dimensional array containing column names and data of executed query.
-; Syntax.........:	_CSV_GetTable2d($csv_handle, $csv_query)
+; Name...........:	_CSV_Exec()
+; Description ...:	Executes a SQLite query, does not handle results.
+; Syntax.........:	_CSV_Exec($csv_handle, $csv_query)
 ; Parameters ....:	$csv_handle			- the handle of the CSV file you are querying.
-;					$csv_query			- the query.
+;					$csv_query			- the SQLite query.
 ; Return values .: 	On Success			- the 2Dimensional array of results.
 ;                 	On Failure			- Returns nothing.
 ; Author ........:	seangriffin
@@ -83,44 +83,128 @@ EndFunc
 ; Example .......:	Yes
 ;
 ; ;==========================================================================================
-Func _CSV_GetTable2d($csv_handle, $csv_query)
+Func _CSV_Exec($csv_handle, $csv_query)
 
 	Local $aResult, $iRows, $iColumns, $iRval
 	$conn = _SQLite_Open ($csv_handle) ; open :memory: Database
-	_SQLite_GetTable2d(-1, $csv_query, $aResult, $iRows, $iColumns)
+	_SQLite_Exec($conn, $csv_query)
 	_SQLite_Close($conn)
 	Return $aResult
 EndFunc
 
-
 ; #FUNCTION# ;===============================================================================
 ;
-; Name...........:	_CSV_Display2DResult()
-; Description ...:	Prints to Console a formated display of a 2Dimensional array.
-; Syntax.........:	_CSV_Display2DResult($csv_result)
-; Parameters ....:	$csv_result			- the results of a query (see _CSV_GetTable2d() above).
-; Return values .: 	On Success			- Returns nothing.
-;                 	On Failure			- Returns nothing.
+; Name...........:	_CSV_GetRecordArray()
+; Description ...:	Get a 1D or 2D array of records in the CSV file.
+; Syntax.........:	_CSV_GetRecordArray($csv_handle, $row_number_or_query = "", $include_header = False)
+; Parameters ....:	$csv_handle				- the handle of the CSV file.
+;					$row_number_or_query	- Optional: a specific query to filter the records.
+;												"" = get all CSV records (default)
+;												row number = get a record by it's row number
+;												SQLite query = get all records matching a query
+;					$include_header			- Optional: include the header in the output
+;												True = include the header
+;												False = do not include the header (default)
+; Return values .: 	On Success				- an array of CSV record(s).
+;                 	On Failure				- Returns nothing.
 ; Author ........:	seangriffin
 ; Modified.......:
-; Remarks .......:	A prerequisite is that _CSV_GetTable2d() has been executed.
+; Remarks .......:	A prerequisite is that _CSV_Open() has been executed.
 ; Related .......:
 ; Link ..........:
 ; Example .......:	Yes
 ;
 ; ;==========================================================================================
-Func _CSV_Display2DResult($csv_result)
+Func _CSV_GetRecordArray($csv_handle, $row_number_or_query = "", $include_header = False)
+
+	Local $aResult, $iRows, $iColumns, $iRval
+	$conn = _SQLite_Open ($csv_handle)
+
+	if StringLen($row_number_or_query) = 0 Then
+
+		$row_number_or_query = "SELECT * FROM csv;"
+	EndIf
+
+	if IsInt($row_number_or_query) = True Then
+
+		_SQLite_GetTable2d($conn, "SELECT * FROM csv WHERE rowid = " & $row_number_or_query & ";", $aResult, $iRows, $iColumns)
+
+		if $include_header = True Then
+
+			Return $aResult
+		Else
+
+			Local $csv_result = _ArrayExtract($aResult, 1, 1)
+			Return $csv_result
+		EndIf
+	Else
+
+		_SQLite_GetTable2d($conn, $row_number_or_query, $aResult, $iRows, $iColumns)
+
+		if $include_header = False Then
+
+			_ArrayDelete($aResult, 0)
+		EndIf
+
+		Return $aResult
+	EndIf
+
+	Return False
+EndFunc
+
+
+; #FUNCTION# ;===============================================================================
+;
+; Name...........:	_CSV_DisplayArrayResult()
+; Description ...:	Prints to Console a formated display of a result array.
+; Syntax.........:	_CSV_DisplayArrayResult($csv_result)
+; Parameters ....:	$csv_result			- the results of a query (see _CSV_GetRecordArray()).
+; Return values .: 	On Success			- Returns nothing.
+;                 	On Failure			- Returns nothing.
+; Author ........:	seangriffin
+; Modified.......:
+; Remarks .......:	A prerequisite is that _CSV_GetTableArray() has been executed.
+; Related .......:
+; Link ..........:
+; Example .......:	Yes
+;
+; ;==========================================================================================
+Func _CSV_DisplayArrayResult($csv_result)
 
 	_SQLite_Display2DResult($csv_result)
 EndFunc
 
 ; #FUNCTION# ;===============================================================================
 ;
+; Name...........:	_CSV_GetRecordCount()
+; Description ...:	Get the number of records in a CSV file.
+; Syntax.........:	_CSV_GetRecordCount($csv_handle)
+; Parameters ....:	$csv_handle			- the handle of the CSV file.
+; Return values .: 	On Success			- the number of records in the CSV file.
+;                 	On Failure			- Returns nothing.
+; Author ........:	seangriffin
+; Modified.......:
+; Remarks .......:	A prerequisite is that _CSV_Open() has been executed.
+; Related .......:
+; Link ..........:
+; Example .......:	Yes
+;
+; ;==========================================================================================
+Func _CSV_GetRecordCount($csv_handle)
+
+	Local $csv_result = _CSV_GetRecordArray($csv_handle, "SELECT count(*) FROM csv;")
+	Return $csv_result[0][0]
+EndFunc
+
+; #FUNCTION# ;===============================================================================
+;
 ; Name...........:	_CSV_SaveAs()
 ; Description ...:	Saves a CSV file ($csv_handle) to another CSV file.
-; Syntax.........:	_CSV_SaveAs($csv_handle, $csv_file)
+; Syntax.........:	_CSV_SaveAs($csv_handle, $csv_file, $csv_query = "SELECT * FROM csv;")
 ; Parameters ....:	$csv_handle			- the handle of the CSV file to save.
 ;					$csv_file			- the name of the CSV file to save to.
+;					$csv_query			- Optional: a SQLite query of data to save.
+;											By default all data will be saved.
 ; Return values .: 	On Success			- True
 ;                 	On Failure			- False
 ; Author ........:	seangriffin
@@ -131,11 +215,11 @@ EndFunc
 ; Example .......:	Yes
 ;
 ; ;==========================================================================================
-Func _CSV_SaveAs($csv_handle, $csv_file)
+Func _CSV_SaveAs($csv_handle, $csv_file, $csv_query = "SELECT * FROM csv;")
 
 	Local $sOut
 	FileDelete($csv_file)
-	_SQLite_SQLiteExe($csv_handle, ".headers on" & @CRLF & ".mode ascii" & @CRLF & ".output '" & $csv_file & "'" & @CRLF & "SELECT * FROM csv;", $sOut, -1, True)
+	_SQLite_SQLiteExe($csv_handle, ".headers on" & @CRLF & ".mode ascii" & @CRLF & ".output '" & $csv_file & "'" & @CRLF & $csv_query, $sOut, -1, True)
 	Local $csv_str = FileRead($csv_file)
 
 	; Each of the embedded double-quote characters must be represented by a pair of double-quote characters.
@@ -155,9 +239,7 @@ Func _CSV_SaveAs($csv_handle, $csv_file)
 
 	FileDelete($csv_file)
 	FileWrite($csv_file, $csv_str)
-
 EndFunc
-
 
 ; #FUNCTION# ;===============================================================================
 ;
