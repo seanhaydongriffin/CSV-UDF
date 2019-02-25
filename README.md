@@ -16,6 +16,7 @@ Because SQLite is used the performance of the UDF is fast and the functions are 
 ## List of Functions
 
 *_CSV_Initialise()*
+
 *_CSV_Open($csv_file)*
 _CSV_Exec($csv_handle, $csv_query)
 _CSV_GetRecordArray($csv_handle, $row_number_or_query = "", $include_header = False)
