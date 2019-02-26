@@ -58,8 +58,9 @@ EndFunc
 ; ;==========================================================================================
 Func _CSV_Open($csv_file)
 
-	Local $sOut
-	Local $csv_handle = @TempDir & "\" & StringReplace($csv_file, ".csv", ".db")
+	Local $sOut, $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
+	_PathSplit($csv_file, $sDrive, $sDir, $sFileName, $sExtension)
+	Local $csv_handle = @TempDir & "\" & $sFileName & ".db"
 	FileDelete($csv_handle)
 	_SQLite_SQLiteExe($csv_handle, ".mode csv" & @CRLF & ".import '" & $csv_file & "' csv", $sOut, -1, True)
 	Return $csv_handle
@@ -128,6 +129,7 @@ Func _CSV_GetRecordArray($csv_handle, $row_number_or_query = "", $include_header
 	if IsInt($row_number_or_query) = True Then
 
 		_SQLite_GetTable2d($conn, "SELECT * FROM csv WHERE rowid = " & $row_number_or_query & ";", $aResult, $iRows, $iColumns)
+		_SQLite_Close($conn)
 
 		if $include_header = True Then
 
@@ -140,6 +142,7 @@ Func _CSV_GetRecordArray($csv_handle, $row_number_or_query = "", $include_header
 	Else
 
 		_SQLite_GetTable2d($conn, $row_number_or_query, $aResult, $iRows, $iColumns)
+		_SQLite_Close($conn)
 
 		if $include_header = False Then
 
@@ -149,6 +152,7 @@ Func _CSV_GetRecordArray($csv_handle, $row_number_or_query = "", $include_header
 		Return $aResult
 	EndIf
 
+	_SQLite_Close($conn)
 	Return False
 EndFunc
 
